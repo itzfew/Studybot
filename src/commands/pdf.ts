@@ -209,42 +209,109 @@ const messageMap: Record<string, number> = {
 const fileStorageChatId = -1002481747949;
 
 const handlePdfCommand = async (ctx: Context, keyword: string) => {
-  if (!messageMap[keyword]) return;
+  if (!messageMap[keyword]) {
+    await ctx.reply('Sorry, the requested file was not found. Please check the keyword or contact @NeetAspirantsBot for assistance.');
+    return;
+  }
 
   debug(`Handling PDF command for: ${keyword}`);
 
   await ctx.reply('Here is your file. Save or forward it to keep it — this message will not be stored permanently.');
 
-  await ctx.telegram.copyMessage(
-    ctx.chat!.id,
-    fileStorageChatId,
-    messageMap[keyword]
-  );
+  try {
+    await ctx.telegram.copyMessage(
+      ctx.chat!.id,
+      fileStorageChatId,
+      messageMap[keyword],
+      { reply_to_message_id: ctx.message?.message_id }
+    );
+  } catch (err) {
+    console.error('Error copying message:', err);
+    await ctx.reply('Failed to fetch the file. Please try again later or contact @NeetAspirantsBot.');
+  }
 };
 
 const pdf = () => async (ctx: Context) => {
   try {
     const message = ctx.message;
 
-    // Handle /start with deep link
-    if (message && 'text' in message && message.text.startsWith('/start')) {
-      const parts = message.text.trim().split(' ');
-      if (parts.length > 1) {
-        const keyword = parts[1].toLowerCase();
-        await handlePdfCommand(ctx, keyword);
+    // Handle /start with deep link or plain text commands
+    if (message && 'text' in message) {
+      const text = message.text.trim();
+      let keyword = '';
+
+      if (text.startsWith('/start')) {
+        const parts = text.split(' ');
+        if (parts.length > 1) {
+          keyword = parts[1].toLowerCase();
+        } else {
+          await ctx.reply('Please provide a valid keyword. Example: /start mtg-rapid-physics');
+          return;
+        }
+      } else {
+        keyword = text.toLowerCase();
+      }
+
+      if (!keyword) {
+        await ctx.reply('No keyword provided. Please send a valid keyword or use /start <keyword>.');
         return;
       }
-    }
 
-    // Handle plain text commands like "neetpyq1"
-    if (message && 'text' in message) {
-      const keyword = message.text.trim().toLowerCase();
       await handlePdfCommand(ctx, keyword);
     }
   } catch (err) {
     console.error('PDF command handler error:', err);
-    await ctx.reply('"An error occurred while fetching your file. Please contact @NeetAspirantsBot for assistance and try again later.');
+    await ctx.reply('An error occurred while fetching your file. Please contact @NeetAspirantsBot for assistance.');
   }
 };
 
-export { pdf };
+// Inline mode handler
+const setupInlineMode = (bot: any) => {
+  bot.on('inline_query', async (ctx: Context) => {
+    const query = ctx.inlineQuery?.query?.trim().toLowerCase() || '';
+    debug(`Handling inline query: ${query}`);
+
+    const results: any[] = [];
+
+    // Filter messageMap for matching keywords
+    Object.keys(messageMap).forEach((keyword, index) => {
+      if (query === '' || keyword.includes(query)) {
+        results.push({
+          type: 'article',
+          id: String(index),
+          title: keyword,
+          description: `Get the ${keyword} PDF file`,
+          input_message_content: {
+            message_text: `Sending ${keyword} PDF...`,
+          },
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: `Get ${keyword}`,
+                  callback_data: `pdf:${keyword}`,
+                },
+              ],
+            ],
+          },
+        });
+      }
+    });
+
+    // Limit results to 50 as per Telegram's API
+    await ctx.answerInlineQuery(results.slice(0, 50));
+  });
+
+  // Handle callback queries from inline mode
+  bot.on('callback_query', async (ctx: Context) => {
+    const data = ctx.callbackQuery?.data;
+    if (data?.startsWith('pdf:')) {
+      const keyword = data.replace('pdf:', '').toLowerCase();
+      await handlePdfCommand(ctx, keyword);
+      await ctx.answerCallbackQuery();
+    }
+  });
+};
+
+// Export both the pdf handler and inline mode setup
+export { pdf, setupInlineMode };
