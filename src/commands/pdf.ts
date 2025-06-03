@@ -1,10 +1,11 @@
-import { Context, InlineQueryResultArticle } from 'telegraf';
+import { Context } from 'telegraf';
+import { InlineQueryResultArticle } from 'telegraf/types'; // Import from telegraf/types
 import createDebug from 'debug';
-import pdfData from '../pdf.json'; // Import the pdf.json data
+import pdfData from '../pdf.json';
 
 const debug = createDebug('bot:pdf_handler');
 
-// Map command keywords to message IDs (unchanged)
+// Map command keywords to message IDs
 const messageMap: Record<string, number> = {
   'mtg-rapid-physics': 3,
   'mtg-rapid-chemistry': 5,
@@ -308,9 +309,19 @@ const pdf = () => async (ctx: Context) => {
 // Handle callback queries for inline mode
 const handleCallbackQuery = async (ctx: Context) => {
   const callback = ctx.callbackQuery;
-  if ('data' in callback && callback.data.startsWith('get_pdf_')) {
-    const keyword = callback.data.replace('get_pdf_', '');
+  if (!callback || !('data' in callback)) {
+    await ctx.answerCbQuery('Invalid callback data.');
+    return;
+  }
+
+  const data = callback.data;
+  if (data.startsWith('get_pdf_')) {
+    const keyword = data.replace('get_pdf_', '');
     if (messageMap[keyword]) {
+      if (!ctx.from) {
+        await ctx.answerCbQuery('Unable to send file: User not found.');
+        return;
+      }
       await ctx.telegram.sendMessage(
         ctx.from.id,
         'Here is your file. Save or forward it to keep it — this message will not be stored permanently.'
