@@ -1,17 +1,14 @@
-import { Telegraf, Context } from 'telegraf';
+import { Telegraf } from 'telegraf';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { saveToSheet } from './utils/saveToSheet';
 import { fetchChatIdsFromSheet } from './utils/chatStore';
 import { about } from './commands/about';
 import { help, handleHelpPagination } from './commands/help';
-import { pdf } from './commands/pdf'; // Assumes pdf.ts includes inline mode support
+import { pdf, handleCallbackQuery } from './commands/pdf'; // Updated import
 import { greeting } from './text/greeting';
 import { production, development } from './core';
 import { isPrivateChat } from './utils/groupSettings';
 import { setupBroadcast } from './commands/broadcast';
-import createDebug from 'debug';
-
-const debug = createDebug('bot:main');
 
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
 const ENVIRONMENT = process.env.NODE_ENV || '';
@@ -21,6 +18,9 @@ if (!BOT_TOKEN) throw new Error('BOT_TOKEN not provided!');
 console.log(`Running bot in ${ENVIRONMENT} mode`);
 
 const bot = new Telegraf(BOT_TOKEN);
+
+// Enable inline mode
+bot.on('inline_query', pdf());
 
 // --- Commands ---
 bot.command('about', about());
@@ -51,46 +51,7 @@ bot.command('users', async (ctx) => {
 // Admin: /broadcast
 setupBroadcast(bot);
 
-// --- Inline Mode Setup for PDFs ---
-bot.on('inline_query', async (ctx: Context) => {
-  const query = ctx.inlineQuery?.query?.trim().toLowerCase() || '';
-  debug(`Handling inline query: ${query}`);
-
-  // Import messageMap from pdf module (assuming it's exported)
-  const { messageMap } = require('./commands/pdf'); // Adjust path if needed
-
-  const results: any[] = [];
-
-  // Filter messageMap for matching keywords
-  Object.keys(messageMap).forEach((keyword, index) => {
-    if (query === '' || keyword.includes(query)) {
-      results.push({
-        type: 'article',
-        id: String(index),
-        title: keyword,
-        description: `Get the ${keyword} PDF file`,
-        input_message_content: {
-          message_text: `Sending ${keyword} PDF...`,
-        },
-        reply_markup: {
-          inline_keyboard: [
-            [
-              {
-                text: `Get ${keyword}`,
-                callback_data: `pdf:${keyword}`,
-              },
-            ],
-          ],
-        },
-      });
-    }
-  });
-
-  // Limit results to 50 as per Telegram's API
-  await ctx.answerInlineQuery(results.slice(0, 50));
-});
-
-// --- Callback Handler (Updated for Inline Mode) ---
+// --- Callback Handler ---
 bot.on('callback_query', async (ctx) => {
   const callback = ctx.callbackQuery;
   if ('data' in callback) {
@@ -111,11 +72,8 @@ bot.on('callback_query', async (ctx) => {
         console.error('Error refreshing users:', err);
         await ctx.answerCbQuery('Failed to refresh.');
       }
-    } else if (data.startsWith('pdf:')) {
-      const keyword = data.replace('pdf:', '').toLowerCase();
-      const { handlePdfCommand } = require('./commands/pdf'); // Import handlePdfCommand
-      await handlePdfCommand(ctx, keyword);
-      await ctx.answerCbQuery(`Sent ${keyword} PDF`);
+    } else if (data.startsWith('get_pdf_')) {
+      await handleCallbackQuery(ctx);
     } else {
       await ctx.answerCbQuery('Unknown action');
     }
@@ -134,7 +92,7 @@ bot.start(async (ctx) => {
   await greeting()(ctx);
   await pdf()(ctx);
 
-  const alreadyNotified = await saveToSheet(chat);
+  const alreadyNotified = await saveToSheet shots);
   console.log(`Saved chat ID: ${chat.id} (${chat.type})`);
 
   if (chat.id !== ADMIN_ID && !alreadyNotified) {
