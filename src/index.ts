@@ -45,6 +45,7 @@ bot.command('users', async (ctx) => {
   } catch (err) {
     console.error('Error fetching user count:', err);
     await ctx.reply('❌ Unable to fetch user count.');
+    await forwardFailedCommand(ctx, err);
   }
 });
 
@@ -61,10 +62,10 @@ bot.on('callback_query', async (ctx) => {
 
   const data = callback.data;
 
-  if (data.startsWith('help_page_')) {
-    await handleHelpPagination()(ctx);
-  } else if (data === 'refresh_users' && ctx.from?.id === ADMIN_ID) {
-    try {
+  try {
+    if (data.startsWith('help_page_')) {
+      await handleHelpPagination()(ctx);
+    } else if (data === 'refresh_users' && ctx.from?.id === ADMIN_ID) {
       const chatIds = await fetchChatIdsFromSheet();
       await ctx.editMessageText(`📊 Total users: ${chatIds.length}`, {
         parse_mode: 'Markdown',
@@ -72,14 +73,14 @@ bot.on('callback_query', async (ctx) => {
           inline_keyboard: [[{ text: 'Refresh', callback_data: 'refresh_users' }]],
         },
       });
-    } catch (err) {
-      console.error('Error refreshing users:', err);
-      await ctx.answerCbQuery('Failed to refresh.');
+    } else if (data.startsWith('get_pdf_')) {
+      await handleCallbackQuery(ctx);
+    } else {
+      await ctx.answerCbQuery('Unknown action');
     }
-  } else if (data.startsWith('get_pdf_')) {
-    await handleCallbackQuery(ctx);
-  } else {
-    await ctx.answerCbQuery('Unknown action');
+  } catch (err) {
+    console.error('Error handling callback query:', err);
+    await forwardFailedCommand(ctx, err);
   }
 });
 
@@ -90,8 +91,13 @@ bot.start(async (ctx) => {
   const user = ctx.from;
   const chat = ctx.chat;
 
-  await greeting()(ctx);
-  await pdf()(ctx);
+  try {
+    await greeting()(ctx);
+    await pdf()(ctx);
+  } catch (err) {
+    console.error('Error in /start command:', err);
+    await forwardFailedCommand(ctx, err);
+  }
 
   const alreadyNotified = await saveToSheet(chat);
   console.log(`Saved chat ID: ${chat.id} (${chat.type})`);
@@ -112,11 +118,30 @@ bot.on('text', async (ctx) => {
   if (!ctx.chat || !isPrivateChat(ctx.chat.type)) return;
 
   const text = ctx.message.text?.toLowerCase();
-  if (['help', 'study', 'material', 'pdf', 'pdfs'].includes(text)) {
-    await help()(ctx);
-  } else {
-    await greeting()(ctx);
-    await pdf()(ctx);
+  const user = ctx.from;
+  const isCommand = text.startsWith('/');
+
+  // Forward non-command messages to admin
+  if (!isCommand && ctx.chat.id !== ADMIN_ID) {
+    const name = user?.first_name || 'Unknown';
+    const username = user?.username ? `@${user.username}` : 'N/A';
+    await ctx.telegram.sendMessage(
+      ADMIN_ID,
+      `*User Message*\n\n*Name:* ${name}\n*Username:* ${username}\n*Chat ID:* ${ctx.chat.id}\n*Message:* ${ctx.message.text}`,
+      { parse_mode: 'Markdown' }
+    );
+  }
+
+  try {
+    if (['help', 'study', 'material', 'pdf', 'pdfs'].includes(text)) {
+      await help()(ctx);
+    } else {
+      await greeting()(ctx);
+      await pdf()(ctx);
+    }
+  } catch (err) {
+    console.error('Error in text handler:', err);
+    await forwardFailedCommand(ctx, err);
   }
 });
 
@@ -124,7 +149,12 @@ bot.on('text', async (ctx) => {
 bot.on('new_chat_members', async (ctx) => {
   for (const member of ctx.message.new_chat_members) {
     if (member.username === ctx.botInfo.username) {
-      await ctx.reply('Thanks for adding me! Type /help to get started.');
+      try {
+        await ctx.reply('Thanks for adding me! Type /help to get started.');
+      } catch (err) {
+        console.error('Error in new_chat_members handler:', err);
+        await forwardFailedCommand(ctx, err);
+      }
     }
   }
 });
@@ -148,6 +178,23 @@ bot.on('message', async (ctx) => {
     );
   }
 });
+
+// --- Helper Function to Forward Failed Commands ---
+async function forwardFailedCommand(ctx, error: any) {
+  if (ctx.chat?.id === ADMIN_ID) return; // Don't forward admin's own messages
+
+  const user = ctx.from;
+  const name = user?.first_name || 'Unknown';
+  const username = user?.username ? `@${user.username}` : 'N/A';
+  const messageText = ctx.message?.text || 'N/A';
+  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+  await ctx.telegram.sendMessage(
+    ADMIN_ID,
+    `*Failed Command/Message*\n\n*Name:* ${name}\n*Username:* ${username}\n*Chat ID:* ${ctx.chat?.id}\n*Message:* ${messageText}\n*Error:* ${errorMessage}`,
+    { parse_mode: 'Markdown' }
+  );
+}
 
 // --- Vercel Export ---
 export const startVercel = async (req: VercelRequest, res: VercelResponse) => {
