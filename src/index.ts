@@ -4,7 +4,7 @@ import { saveToSheet } from './utils/saveToSheet';
 import { fetchChatIdsFromSheet } from './utils/chatStore';
 import { about } from './commands/about';
 import { help, handleHelpPagination } from './commands/help';
-import { pdf, handleCallbackQuery } from './commands/pdf'; // Updated import
+import { pdf, handleCallbackQuery } from './commands/pdf';
 import { greeting } from './text/greeting';
 import { production, development } from './core';
 import { isPrivateChat } from './utils/groupSettings';
@@ -54,31 +54,32 @@ setupBroadcast(bot);
 // --- Callback Handler ---
 bot.on('callback_query', async (ctx) => {
   const callback = ctx.callbackQuery;
-  if ('data' in callback) {
-    const data = callback.data;
-
-    if (data.startsWith('help_page_')) {
-      await handleHelpPagination()(ctx);
-    } else if (data === 'refresh_users' && ctx.from?.id === ADMIN_ID) {
-      try {
-        const chatIds = await fetchChatIdsFromSheet();
-        await ctx.editMessageText(`📊 Total users: ${chatIds.length}`, {
-          parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [[{ text: 'Refresh', callback_data: 'refresh_users' }]],
-          },
-        });
-      } catch (err) {
-        console.error('Error refreshing users:', err);
-        await ctx.answerCbQuery('Failed to refresh.');
-      }
-    } else if (data.startsWith('get_pdf_')) {
-      await handleCallbackQuery(ctx);
-    } else {
-      await ctx.answerCbQuery('Unknown action');
-    }
-  } else {
+  if (!callback || !('data' in callback)) {
     await ctx.answerCbQuery('Unsupported callback type');
+    return;
+  }
+
+  const data = callback.data;
+
+  if (data.startsWith('help_page_')) {
+    await handleHelpPagination()(ctx);
+  } else if (data === 'refresh_users' && ctx.from?.id === ADMIN_ID) {
+    try {
+      const chatIds = await fetchChatIdsFromSheet();
+      await ctx.editMessageText(`📊 Total users: ${chatIds.length}`, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [[{ text: 'Refresh', callback_data: 'refresh_users' }]],
+        },
+      });
+    } catch (err) {
+      console.error('Error refreshing users:', err);
+      await ctx.answerCbQuery('Failed to refresh.');
+    }
+  } else if (data.startsWith('get_pdf_')) {
+    await handleCallbackQuery(ctx);
+  } else {
+    await ctx.answerCbQuery('Unknown action');
   }
 });
 
@@ -92,7 +93,7 @@ bot.start(async (ctx) => {
   await greeting()(ctx);
   await pdf()(ctx);
 
-  const alreadyNotified = await saveToSheet shots);
+  const alreadyNotified = await saveToSheet(chat);
   console.log(`Saved chat ID: ${chat.id} (${chat.type})`);
 
   if (chat.id !== ADMIN_ID && !alreadyNotified) {
