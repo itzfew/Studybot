@@ -1,9 +1,10 @@
-import { Context } from 'telegraf';
+import { Context, InlineQueryResultArticle } from 'telegraf';
 import createDebug from 'debug';
+import pdfData from '../pdf.json'; // Import the pdf.json data
 
 const debug = createDebug('bot:pdf_handler');
 
-// Map command keywords to message IDs
+// Map command keywords to message IDs (unchanged)
 const messageMap: Record<string, number> = {
   'mtg-rapid-physics': 3,
   'mtg-rapid-chemistry': 5,
@@ -66,7 +67,7 @@ const messageMap: Record<string, number> = {
   'arihant-mathematics-handbook': 62,
   'arihant-chemistry-handbook': 63,
   'view-more-study-material': 64,
-    '10-full-syllabus-mock-anand': 65,
+  '10-full-syllabus-mock-anand': 65,
   'akash-modules': 66,
   'allen-modules': 67,
   'allen-11-years-pyq': 68,
@@ -87,130 +88,131 @@ const messageMap: Record<string, number> = {
   'arihant-pyq-physics': 83,
   'arihant-pyq-chemistry': 84,
   'allen-physics-handbook': 85,
-'allen-chemistry-handbook': 86,
-'allen-biology-handbook': 87,
-'allen-maths-handbook': 88,
+  'allen-chemistry-handbook': 86,
+  'allen-biology-handbook': 87,
+  'allen-maths-handbook': 88,
   'mohit-bhargava-physics-12th-1': 89,
-'mohit-bhargava-physics-12th-2': 90,
-'gurukul-oswal-objective-iit-jee': 91,
-'neet-crash-pw-45-days-physics': 92,
-'NEET-crash-pw-45-days-biology': 93,
-'neet-crash-pw-45-days-chemistry': 94,
-'bansal-classes-chemistry-theory': 95,
-'Bansal-classes-math-questions': 96,
-'bansal-classes-physics-booklet': 97,
-'bansal-classes-physics-material': 98,
-'bansal-classes-math-theory': 99,
-'bansal-classes-chemistry-booklet-1': 100,
-'bansal-classes-organic-chemistry-1': 101,
-'bansal-classes-chemistry-booklet-2': 102,
-'bansal-classes-organic-chemistry-2': 103,
-'bansal-classes-physics-theory': 104,
-'iit-kalrashukla-jee-advanced-problems-1-6': 105,
-'IIT-kalrashukla-jee-advanced-problems-7-12': 106,
-'iit-kalrashukla-jee-advanced-problems-13-19': 107,
-'oswaal-math': 108,
-'Oswaal-physics': 109,
-'oswaal-chemistry': 110,
-'narayana-jee-advanced-test': 111,
-'aakash-zoology-ncert-map': 112,
-'aakash-botany-ncert-map': 113,
-'Aakash-physics-ncert-map': 114,
-'aakash-chemistry-ncert-map': 115,
-'rd-sharma-11th': 116,
-'rd-sharma-12th-2': 117,
-'rd-sharma-12th-1': 118,
-'arihant-40-days-crash-jee-mains-physics': 119,
-'Arihant-40-days-crash-jee-mains-chemistry': 120,
-'arihant-40-days-crash-jee-mains-mathematics': 121,
+  'mohit-bhargava-physics-12th-2': 90,
+  'gurukul-oswal-objective-iit-jee': 91,
+  'neet-crash-pw-45-days-physics': 92,
+  'NEET-crash-pw-45-days-biology': 93,
+  'neet-crash-pw-45-days-chemistry': 94,
+  'bansal-classes-chemistry-theory': 95,
+  'Bansal-classes-math-questions': 96,
+  'bansal-classes-physics-booklet': 97,
+  'bansal-classes-physics-material': 98,
+  'bansal-classes-math-theory': 99,
+  'bansal-classes-chemistry-booklet-1': 100,
+  'bansal-classes-organic-chemistry-1': 101,
+  'bansal-classes-chemistry-booklet-2': 102,
+  'bansal-classes-organic-chemistry-2': 103,
+  'bansal-classes-physics-theory': 104,
+  'iit-kalrashukla-jee-advanced-problems-1-6': 105,
+  'IIT-kalrashukla-jee-advanced-problems-7-12': 106,
+  'iit-kalrashukla-jee-advanced-problems-13-19': 107,
+  'oswaal-math': 108,
+  'Oswaal-physics': 109,
+  'oswaal-chemistry': 110,
+  'narayana-jee-advanced-test': 111,
+  'aakash-zoology-ncert-map': 112,
+  'aakash-botany-ncert-map': 113,
+  'Aakash-physics-ncert-map': 114,
+  'aakash-chemistry-ncert-map': 115,
+  'rd-sharma-11th': 116,
+  'rd-sharma-12th-2': 117,
+  'rd-sharma-12th-1': 118,
+  'arihant-40-days-crash-jee-mains-physics': 119,
+  'Arihant-40-days-crash-jee-mains-chemistry': 120,
+  'arihant-40-days-crash-jee-mains-mathematics': 121,
   'motion-classes-maths-module': 122,
-'motion-iit-chemistry-module': 123,
-'motion-classes-physics-module': 124,
-'motion-final-revision-module': 125,
-'motion-revision-module-physics': 126,
-'motion-revision-module-chemistry': 127,
-'motion-revision-module-mathematics': 128,
+  'motion-iit-chemistry-module': 123,
+  'motion-classes-physics-module': 124,
+  'motion-final-revision-module': 125,
+  'motion-revision-module-physics': 126,
+  'motion-revision-module-chemistry': 127,
+  'motion-revision-module-mathematics': 128,
   'disha-360-biology-seep-pahuja': 129,
-'rs-aggarwal-mathematics': 130,
-'sl-arora-physics-vol-1': 131,
-'sl-arora-physics-vol-2': 132,
-'mtg-19-years-jee-mains-mathematics': 133,
-'vedantu-tatva-math-vol-1': 134,
-'vedantu-tatva-math-vol-2': 135,
-'vedantu-tatva-math-vol-3': 136,
-'vedantu-tatva-physics-vol-1': 137,
-'vedantu-tatva-physics-vol-2': 138,
-'vedantu-tatva-physics-vol-3': 139,
-'vedantu-tatva-physics-vol-4': 140,
-'vedantu-tatva-chemistry-vol-1': 141,
-'vedantu-tatva-chemistry-vol-2': 142,
-'vedantu-tatva-chemistry-vol-3': 143,
-'vedantu-tatva-chemistry-vol-4': 144,
-'disha-ncert-xtract-chemistry': 145,
-'disha-ncert-xtract-biology': 146,
-'disha-ncert-xtract-physics': 147,
-'vedantu-tatva-biology-vol-1': 148,
-'vedantu-tatva-biology-vol-2': 149,
-'vedantu-tatva-biology-vol-3': 150,
-'vedantu-tatva-biology-vol-4': 151,
-'vedantu-tatva-biology-vol-5': 152,
-'vedantu-tatva-biology-vol-6': 153,
-'disha-36-years-pyq-biology-11': 154,
-'disha-36-years-pyq-biology-12': 155,
-'disha-36-years-pyq-chemistry-11': 156,
-'disha-36-years-pyq-chemistry-12': 157,
-'disha-36-years-pyq-physics-11': 158,
-'disha-36-years-pyq-physics-12': 159,
-'mtg-36-years-pyq-biology-11': 160,
-'mtg-36-years-pyq-biology-12': 161,
-'mtg-36-years-pyq-chemistry-11': 162,
-'mtg-36-years-pyq-chemistry-12': 163,
-'mtg-36-years-pyq-physics-11': 164,
+  'rs-aggarwal-mathematics': 130,
+  'sl-arora-physics-vol-1': 131,
+  'sl-arora-physics-vol-2': 132,
+  'mtg-19-years-jee-mains-mathematics': 133,
+  'vedantu-tatva-math-vol-1': 134,
+  'vedantu-tatva-math-vol-2': 135,
+  'vedantu-tatva-math-vol-3': 136,
+  'vedantu-tatva-physics-vol-1': 137,
+  'vedantu-tatva-physics-vol-2': 138,
+  'vedantu-tatva-physics-vol-3': 139,
+  'vedantu-tatva-physics-vol-4': 140,
+  'vedantu-tatva-chemistry-vol-1': 141,
+  'vedantu-tatva-chemistry-vol-2': 142,
+  'vedantu-tatva-chemistry-vol-3': 143,
+  'vedantu-tatva-chemistry-vol-4': 144,
+  'disha-ncert-xtract-chemistry': 145,
+  'disha-ncert-xtract-biology': 146,
+  'disha-ncert-xtract-physics': 147,
+  'vedantu-tatva-biology-vol-1': 148,
+  'vedantu-tatva-biology-vol-2': 149,
+  'vedantu-tatva-biology-vol-3': 150,
+  'vedantu-tatva-biology-vol-4': 151,
+  'vedantu-tatva-biology-vol-5': 152,
+  'vedantu-tatva-biology-vol-6': 153,
+  'disha-36-years-pyq-biology-11': 154,
+  'disha-36-years-pyq-biology-12': 155,
+  'disha-36-years-pyq-chemistry-11': 156,
+  'disha-36-years-pyq-chemistry-12': 157,
+  'disha-36-years-pyq-physics-11': 158,
+  'disha-36-years-pyq-physics-12': 159,
+  'mtg-36-years-pyq-biology-11': 160,
+  'mtg-36-years-pyq-biology-12': 161,
+  'mtg-36-years-pyq-chemistry-11': 162,
+  'mtg-36-years-pyq-chemistry-12': 163,
+  'mtg-36-years-pyq-physics-11': 164,
   'akash-diagrams-1': 165,
   'akash-diagrams-2': 166,
   'pw-module-physical-chemistry': 167,
-'pw-module-biology-11': 168,
-'pw-module-physics-12': 169,
-'pw-module-inorganic-chemistry': 170,
-'pw-module-biology-12': 171,
-'pw-module-organic-chemistry': 172,
-'pw-module-physics-11': 173,
+  'pw-module-biology-11': 168,
+  'pw-module-physics-12': 169,
+  'pw-module-inorganic-chemistry': 170,
+  'pw-module-biology-12': 171,
+  'pw-module-organic-chemistry': 172,
+  'pw-module-physics-11': 173,
   'arjuna-chemistry-1': 174,
-'arjuna-chemistry-2': 175,
-'arjuna-zoology': 176,
-'arjuna-physics': 177,
-'arjuna-chemistry-3': 178,
-'arjuna-botany': 179,
-'arjuna-botany-1': 180,
-'arjuna-zoology-2': 181,
-'arjuna-botany-2': 182,
-'arjuna-chemistry-1-hindi': 183,
-'arjuna-chemistry-2-hindi': 184,
-'arjuna-chemistry-3-hindi': 185,
-'arjuna-physics-1-hindi': 186,
-'arjuna-physics-2-hindi': 187,
-'arjuna-physics-3-hindi': 188,
-'arjuna-physics-4-hindi': 189,
-'arjuna-physics-5-hindi': 190,
-'arjuna-zoology-1-hindi': 191,
-'arjuna-zoology-3-hindi': 192,
-'arjuna-zoology-4-hindi': 193,
-'arjuna-botany-1-hindi': 194,
-'arjuna-zoology-2-hindi': 195,
-'arjuna-botany-2-hindi': 196,
-'arjuna-botany-3-hindi': 197,
-'arjuna-botany-4-hindi': 198,
-'lakshya-zoology': 199,
-'lakshya-botany': 200,
-'lakshya-physics': 201,
-'lakshya-chemistry': 202,
+  'arjuna-chemistry-2': 175,
+  'arjuna-zoology': 176,
+  'arjuna-physics': 177,
+  'arjuna-chemistry-3': 178,
+  'arjuna-botany': 179,
+  'arjuna-botany-1': 180,
+  'arjuna-zoology-2': 181,
+  'arjuna-botany-2': 182,
+  'arjuna-chemistry-1-hindi': 183,
+  'arjuna-chemistry-2-hindi': 184,
+  'arjuna-chemistry-3-hindi': 185,
+  'arjuna-physics-1-hindi': 186,
+  'arjuna-physics-2-hindi': 187,
+  'arjuna-physics-3-hindi': 188,
+  'arjuna-physics-4-hindi': 189,
+  'arjuna-physics-5-hindi': 190,
+  'arjuna-zoology-1-hindi': 191,
+  'arjuna-zoology-3-hindi': 192,
+  'arjuna-zoology-4-hindi': 193,
+  'arjuna-botany-1-hindi': 194,
+  'arjuna-zoology-2-hindi': 195,
+  'arjuna-botany-2-hindi': 196,
+  'arjuna-botany-3-hindi': 197,
+  'arjuna-botany-4-hindi': 198,
+  'lakshya-zoology': 199,
+  'lakshya-botany': 200,
+  'lakshya-physics': 201,
+  'lakshya-chemistry': 202,
 };
 
 const fileStorageChatId = -1002481747949;
 
+// Handle PDF command for direct messages
 const handlePdfCommand = async (ctx: Context, keyword: string) => {
   if (!messageMap[keyword]) {
-    await ctx.reply('Sorry, the requested file was not found. Please check the keyword or contact @NeetAspirantsBot for assistance.');
+    await ctx.reply('Invalid keyword. Please use /help to see available materials.');
     return;
   }
 
@@ -218,54 +220,111 @@ const handlePdfCommand = async (ctx: Context, keyword: string) => {
 
   await ctx.reply('Here is your file. Save or forward it to keep it — this message will not be stored permanently.');
 
-  try {
-    // Remove reply_to_message_id or use type assertion if needed
-    await ctx.telegram.copyMessage(
-      ctx.chat!.id,
-      fileStorageChatId,
-      messageMap[keyword]
-      // Removed reply_to_message_id to avoid type error
-      // If reply_to_message_id is critical, use type assertion:
-      // { reply_to_message_id: ctx.message?.message_id } as any
-    );
-  } catch (err) {
-    console.error('Error copying message:', err);
-    await ctx.reply('Failed to fetch the file. Please try again later or contact @NeetAspirantsBot.');
-  }
+  await ctx.telegram.copyMessage(
+    ctx.chat!.id,
+    fileStorageChatId,
+    messageMap[keyword]
+  );
 };
 
+// Handle inline queries
+const handleInlineQuery = async (ctx: Context) => {
+  const query = ctx.inlineQuery?.query?.toLowerCase().trim() || '';
+  debug(`Handling inline query: ${query}`);
+
+  // Flatten pdfData to a list of items for easier filtering
+  const allItems = pdfData.flatMap((category: any) =>
+    category.items.map((item: any) => ({
+      label: item.label,
+      key: item.key,
+      category: category.title,
+    }))
+  );
+
+  // Filter items based on query
+  const results = allItems
+    .filter(
+      (item) =>
+        item.label.toLowerCase().includes(query) ||
+        item.key.toLowerCase().includes(query) ||
+        item.category.toLowerCase().includes(query)
+    )
+    .slice(0, 50) // Telegram limits to 50 results
+    .map((item, index): InlineQueryResultArticle => ({
+      type: 'article',
+      id: `${index}-${item.key}`,
+      title: item.label,
+      description: `From ${item.category}`,
+      input_message_content: {
+        message_text: `/start ${item.key}`,
+      },
+      reply_markup: {
+        inline_keyboard: [[
+          {
+            text: 'Get PDF',
+            callback_data: `get_pdf_${item.key}`,
+          },
+        ]],
+      },
+    }));
+
+  await ctx.answerInlineQuery(results, {
+    cache_time: 0, // Ensure fresh results
+  });
+};
+
+// Main pdf command handler
 const pdf = () => async (ctx: Context) => {
   try {
+    // Handle inline queries
+    if (ctx.inlineQuery) {
+      await handleInlineQuery(ctx);
+      return;
+    }
+
     const message = ctx.message;
 
-    // Handle /start with deep link or plain text commands
-    if (message && 'text' in message) {
-      const text = message.text.trim();
-      let keyword = '';
-
-      if (text.startsWith('/start')) {
-        const parts = text.split(' ');
-        if (parts.length > 1) {
-          keyword = parts[1].toLowerCase();
-        } else {
-          await ctx.reply('Please provide a valid keyword. Example: /start mtg-rapid-physics');
-          return;
-        }
-      } else {
-        keyword = text.toLowerCase();
-      }
-
-      if (!keyword) {
-        await ctx.reply('No keyword provided. Please send a valid keyword or use /start <keyword>.');
+    // Handle /start with deep link
+    if (message && 'text' in message && message.text.startsWith('/start')) {
+      const parts = message.text.trim().split(' ');
+      if (parts.length > 1) {
+        const keyword = parts[1].toLowerCase();
+        await handlePdfCommand(ctx, keyword);
         return;
       }
+    }
 
+    // Handle plain text commands
+    if (message && 'text' in message) {
+      const keyword = message.text.trim().toLowerCase();
       await handlePdfCommand(ctx, keyword);
     }
   } catch (err) {
     console.error('PDF command handler error:', err);
-    await ctx.reply('An error occurred while fetching your file. Please contact @NeetAspirantsBot for assistance.');
+    await ctx.reply('An error occurred while fetching your file. Please contact @NeetAspirantsBot for assistance and try again later.');
   }
 };
 
-export { pdf, messageMap, handlePdfCommand };
+// Handle callback queries for inline mode
+const handleCallbackQuery = async (ctx: Context) => {
+  const callback = ctx.callbackQuery;
+  if ('data' in callback && callback.data.startsWith('get_pdf_')) {
+    const keyword = callback.data.replace('get_pdf_', '');
+    if (messageMap[keyword]) {
+      await ctx.telegram.sendMessage(
+        ctx.from.id,
+        'Here is your file. Save or forward it to keep it — this message will not be stored permanently.'
+      );
+      await ctx.telegram.copyMessage(
+        ctx.from.id,
+        fileStorageChatId,
+        messageMap[keyword]
+      );
+      await ctx.answerCbQuery('File sent to your chat!');
+    } else {
+      await ctx.answerCbQuery('Invalid file request.');
+    }
+  }
+};
+
+export { pdf, handleCallbackQuery };
