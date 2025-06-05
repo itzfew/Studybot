@@ -1,4 +1,4 @@
-import { Telegraf, Context } from 'telegraf';
+import { Telegraf } from 'telegraf';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { saveToSheet } from './utils/saveToSheet';
 import { fetchChatIdsFromSheet } from './utils/chatStore';
@@ -9,7 +9,6 @@ import { greeting } from './text/greeting';
 import { production, development } from './core';
 import { isPrivateChat } from './utils/groupSettings';
 import { setupBroadcast } from './commands/broadcast';
-import { mentionAll } from './commands/mention';
 
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
 const ENVIRONMENT = process.env.NODE_ENV || '';
@@ -29,9 +28,7 @@ bot.command('about', about());
 // Multiple triggers for help/material/pdf content
 const helpTriggers = ['help', 'study', 'material', 'pdf', 'pdfs'];
 helpTriggers.forEach(trigger => bot.command(trigger, help()));
-bot.hears(/^(help|study|material|pdf|pdfs)$/i, async (ctx: Context) => {
-  await help()(ctx); // Explicitly call the help function
-});
+bot.hears(/^(help|study|material|pdf|pdfs)$/i, help());
 
 // Admin: /users
 bot.command('users', async (ctx) => {
@@ -53,29 +50,6 @@ bot.command('users', async (ctx) => {
 
 // Admin: /broadcast
 setupBroadcast(bot);
-
-// Admin: /all (for group mentions)
-bot.command('all', async (ctx) => {
-  if (!ctx.chat || isPrivateChat(ctx.chat.type)) {
-    return ctx.reply('This command can only be used in groups.');
-  }
-
-  try {
-    // Check if the user is an admin
-    const admins = await ctx.getChatAdministrators();
-    const isAdmin = admins.some(admin => admin.user.id === ctx.from?.id);
-    if (!isAdmin) {
-      return ctx.reply('Only group admins can use this command.');
-    }
-
-    // Extract additional text after /all (e.g., "come here")
-    const messageText = ctx.message?.text?.split(' ').slice(1).join(' ') || '';
-    await mentionAll(ctx, messageText);
-  } catch (err) {
-    console.error('Error in /all command:', err);
-    await ctx.reply('❌ Failed to mention users.');
-  }
-});
 
 // --- Callback Handler ---
 bot.on('callback_query', async (ctx) => {
