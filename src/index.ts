@@ -1,4 +1,4 @@
-import { Telegraf } from 'telegraf';
+import { Telegraf, Context } from 'telegraf';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { saveToSheet } from './utils/saveToSheet';
 import { fetchChatIdsFromSheet } from './utils/chatStore';
@@ -9,7 +9,7 @@ import { greeting } from './text/greeting';
 import { production, development } from './core';
 import { isPrivateChat } from './utils/groupSettings';
 import { setupBroadcast } from './commands/broadcast';
-import { mentionAll } from './commands/mention'; // Import the new mention command
+import { mentionAll } from './commands/mention';
 
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
 const ENVIRONMENT = process.env.NODE_ENV || '';
@@ -29,7 +29,9 @@ bot.command('about', about());
 // Multiple triggers for help/material/pdf content
 const helpTriggers = ['help', 'study', 'material', 'pdf', 'pdfs'];
 helpTriggers.forEach(trigger => bot.command(trigger, help()));
-bot.hears(/^(help|study|material|pdf|pdfs)$/i, help);
+bot.hears(/^(help|study|material|pdf|pdfs)$/i, async (ctx: Context) => {
+  await help()(ctx); // Explicitly call the help function
+});
 
 // Admin: /users
 bot.command('users', async (ctx) => {
