@@ -1,40 +1,41 @@
-import { Context } from 'telegraf';
+import { Context, Telegram } from 'telegraf';
+import { User } from 'telegraf/typings/core/types/typegram';
 
 export async function mentionAll(ctx: Context, additionalText: string) {
   if (!ctx.chat) return;
 
   try {
-    // Fetch all chat members
-    const members = await ctx.telegram.getChatMembersCount(ctx.chat.id);
-    let allMembers: { id: number; first_name: string; username?: string }[] = [];
-    let offset = 0;
-    const limit = 100; // Telegram API limit per request
+    // Fetch admins to filter them out if needed
+    const admins = await ctx.telegram.getChatAdministrators(ctx.chat.id);
+    const adminIds = admins.map(admin => admin.user.id);
 
-    // Fetch members in batches
-    while (offset < members) {
-      const chatMembers = await ctx.telegram.getChatAdministrators(ctx.chat.id).catch(() => []);
-      const nonAdminMembers = await ctx.telegram.getChatMembers(ctx.chat.id, { offset, limit }).catch(() => []);
-      allMembers = [
-        ...allMembers,
-        ...chatMembers.map(member => ({
-          id: member.user.id,
-          first_name: member.user.first_name,
-          username: member.user.username,
-        })),
-        ...nonAdminMembers.map(member => ({
-          id: member.user.id,
-          first_name: member.user.first_name,
-          username: member.user.username,
-        })),
-      ];
-      offset += limit;
+    // Telegram API doesn't provide a direct way to get all members.
+    // We'll use a workaround by collecting users from recent messages or a stored list.
+    // For this example, we'll assume we can only fetch admins and rely on a manual list or recent interactions.
+    // If you have a database of chat members, you can fetch from there.
+    // Here, we'll simulate fetching members (replace with actual logic if available).
+    const members: User[] = [];
+    
+    // Example: Fetch members from recent messages (limited approach)
+    // Note: This is a workaround; Telegram's API limits non-admin member fetching.
+    // You may need to maintain a member list in your `saveToSheet` or another store.
+    const chatIds = await fetchChatIdsFromSheet(); // Assuming this includes group members
+    for (const chatId of chatIds.filter(id => id !== ctx.from?.id && !adminIds.includes(id))) {
+      try {
+        const member = await ctx.telegram.getChatMember(ctx.chat.id, chatId);
+        if (member.status !== 'left' && member.status !== 'kicked' && !member.user.is_bot) {
+          members.push(member.user);
+        }
+      } catch (err) {
+        console.warn(`Failed to fetch member ${chatId}:`, err);
+      }
     }
 
     // Filter out duplicates, bots, and the admin who triggered the command
     const uniqueMembers = Array.from(
-      new Map(allMembers.map(member => [member.id, member])).values()
+      new Map(members.map(member => [member.id, member])).values()
     ).filter(
-      member => !member.username?.includes('bot') && member.id !== ctx.from?.id
+      member => !member.is_bot && member.id !== ctx.from?.id
     );
 
     if (uniqueMembers.length === 0) {
@@ -47,7 +48,7 @@ export async function mentionAll(ctx: Context, additionalText: string) {
     for (let i = 0; i < uniqueMembers.length; i += batchSize) {
       const batch = uniqueMembers.slice(i, i + batchSize);
       const mentions = batch
-        .map(member => {
+        .map((member: User) => {
           const name = member.username ? `@${member.username}` : member.first_name;
           return `[${name}](tg://user?id=${member.id})`;
         })
