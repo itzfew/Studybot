@@ -206,8 +206,8 @@ const messageMap: Record<string, number> = {
   'lakshya-botany': 200,
   'lakshya-physics': 201,
   'lakshya-chemistry': 202,
-  'allen-2026-11th-Physics-module':203,
-    'allen-2026-12th-Physics-module':204,
+  'allen-2026-11th-physics-module':203,
+    'allen-2026-12th-physics-module':204,
   'allen-pyq-upto-2025':2025,
 };
 
