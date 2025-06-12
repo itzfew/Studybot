@@ -19,8 +19,8 @@ const greeting = () => async (ctx: Context) => {
     if (greetings.includes(text)) {
       await ctx.reply(
         `Welcome ${user.first_name}! You have full access to your NEET preparation resources.\n\n` +
-        `Use /help, /study, or type a keyword (e.g., "mtg-rapid-physics") in this chat to get study materials.\n` +
-        `You can also use *inline mode*`,
+        `Use /help, /study, or type a keyword (e.g., "mtg-rapid-physics") to get study materials directly here.\n\n` +
+        `You can also use *inline mode* — just type your query (like "physics" or "ncert") after typing your bot's name in any chat.`,
         {
           parse_mode: 'Markdown',
         }
