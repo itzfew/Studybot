@@ -211,7 +211,7 @@ const messageMap: Record<string, number> = {
   'allen-pyq-upto-2025':2025,
 };
 
-const fileStorageChatId = -1002589507108;
+const fileStorageChatId = -1002481747949;
 
 // Handle PDF command for direct messages
 const handlePdfCommand = async (ctx: Context, keyword: string) => {
